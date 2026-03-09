@@ -68,7 +68,6 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
         return true;
     }
 
-
     public function showConfigForm()
     {
         $this->getFromDB(1);
