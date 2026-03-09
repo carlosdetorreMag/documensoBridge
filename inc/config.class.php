@@ -101,45 +101,28 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
      *
      * @return boolean True if success
      */
-    public static function install(Migration $migration)
+    public static function install()
     {
         /** @var DBmysql $DB */
         global $DB;
 
-        $default_charset   = DBConnection::getDefaultCharset();
-        $default_collation = DBConnection::getDefaultCollation();
-        $default_key_sign  = DBConnection::getDefaultPrimaryKeySignOption();
-
-        $table = getTableForItemType(self::class);
+        $table = 'glpi_plugin_documenso_bridgeconfigs';
 
         if (!$DB->tableExists($table)) {
-            $migration->displayMessage("Installing $table");
 
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-                     `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
-                     `footer_text` VARCHAR(255) DEFAULT '',
-                     `is_active` TINYINT NOT NULL DEFAULT 1,
-                     `orientation` VARCHAR(1) NOT NULL DEFAULT 'P',
-                     `format` VARCHAR(2) NOT NULL DEFAULT 'A4',
+                     `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+                     `page_value` TINYINT NOT NULL DEFAULT 1,
+                     `posX_value` FLOAT NOT NULL DEFAULT 0.5,
+                     `posY_value` FLOAT NOT NULL DEFAULT 0.5,
+                     `height_value` FLOAT NOT NULL DEFAULT 5,
+                     `width_value` FLOAT NOT NULL DEFAULT 5,
+                     `category_name` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_header',
                PRIMARY KEY  (`id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
             $DB->doQuery($query);
 
             $DB->insert($table, ['id' => 1]);
-        }
-        $migration->dropField($table, 'language'); // useless field removed in 2.5.1
-
-        $migration->displayMessage('Create documensobridge dir');
-        if (!is_dir(GLPI_PLUGIN_DOC_DIR . '/documensobridge')) {
-            mkdir(GLPI_PLUGIN_DOC_DIR . '/documensobridge');
-        }
-
-        $migration->displayMessage('Copy default logo from GLPi core');
-        if (!file_exists(GLPI_PLUGIN_DOC_DIR . '/documensobridge/logo.png')) {
-            copy(
-                GLPI_ROOT . '/public/pics/logos/logo-GLPI-250-black.png',
-                GLPI_PLUGIN_DOC_DIR . '/documensobridge/logo.png',
-            );
         }
 
         return true;
@@ -155,14 +138,10 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
         /** @var DBmysql $DB */
         global $DB;
 
-        $table = getTableForItemType(self::class);
+        $table = 'glpi_plugin_documenso_bridgeconfigs';
 
         $query = 'DROP TABLE IF EXISTS  `' . $table . '`';
         $DB->doQuery($query);
-
-        if (is_dir(GLPI_PLUGIN_DOC_DIR . '/documensobridge')) {
-            Toolbox::deleteDir(GLPI_PLUGIN_DOC_DIR . '/documensobridge');
-        }
 
         return true;
     }

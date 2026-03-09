@@ -6,9 +6,7 @@
         <directory name="front" />
         <directory name="src" />
         <file name="hook.php" />
-        <file name="report.php" />
         <file name="setup.php" />
-        <file name="stat.php" />
     </projectFiles>
 
     <issueHandlers>

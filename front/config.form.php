@@ -37,6 +37,7 @@
 //header("Location:../../central.php");
 
 // Entry menu case
+include(GLPI_ROOT . '/plugins/documenso/inc/config.class.php');
 include(__DIR__ . '/../../../inc/includes.php');
 
 // Comprobación de permisos
@@ -44,7 +45,7 @@ Session::checkRight('config', UPDATE);
 
 // Carga el header con los siguientes datos: plugins/documensobridge/config/
 Html::header(
-    PluginUseditemsexportConfig::getTypeName(1),
+    PluginDocumensoBridgeConfig::getTypeName(1),
     $_SERVER['PHP_SELF'],
     'plugins',
     'documensobridge',
@@ -62,7 +63,7 @@ if (isset($_POST['update'])) {
 }
 
 // Muestra el formulario (CommonDBTM)
-$PluginUseditemsexportConfig->showForm($_GET['id']);
+$PluginDocumensoBridgeConfig->showForm($_GET['id']);
 
 // Renderizado de footer.
 Html::footer();

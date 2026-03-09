@@ -37,39 +37,54 @@
     <input type="hidden" name="id" value="1">
     <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
 
-    {{ fields.checkboxField(
-        'is_active',
-        item.fields['is_active'],
-        __('Is active')
+    <div class="hr-text">
+        <span>{{ __("Sign fields values", 'documensobridge') }}</span>
+    </div>
+
+    {{ fields.textField(
+        'page_value',
+        item.fields['page_value'],
+        __('Page number', 'documensobridge'),
+        {'type': 'number', 'step': 'any', 'min': '1'}
     ) }}
 
-        {{ fields.textField(
-        'footer_text',
-        item.fields['footer_text'],
-        __('Footer text', 'useditemsexport')
+    {{ fields.textField(
+        'posX_value',
+        item.fields['posX_value'],
+        __('X axis value', 'documensobridge'),
+        {'type': 'number', 'step': 'any', 'min': '0'}
     ) }}
 
-    {{ fields.dropdownArrayField(
-        'orientation',
-        item.fields['orientation'],
-        {
-            'L': __('Landscape', 'useditemsexport'),
-            'P': __('Portrait', 'useditemsexport'),
-        },
-        __('Orientation', 'useditemsexport')
+    {{ fields.textField(
+        'posY_value',
+        item.fields['posY_value'],
+        __('Y axis value', 'documensobridge'),
+        {'type': 'number', 'step': 'any', 'min': '0'}
     ) }}
 
-    {{ fields.dropdownArrayField(
-        'format',
-        item.fields['format'],
-        {
-            'A3': __('A3'),
-            'A4': __('A4'),
-            'A5': __('A5'),
-        },
-        __('Format', 'useditemsexport')
+    {{ fields.textField(
+        'height_value',
+        item.fields['height_value'],
+        __('Height value', 'documensobridge'),
+        {'type': 'number', 'step': 'any', 'min': '0'}
     ) }}
 
+    {{ fields.textField(
+        'width_value',
+        item.fields['width_value'],
+        __('Width value', 'documensobridge'),
+        {'type': 'number', 'step': 'any', 'min': '0'}
+    ) }}
+
+    <div class="hr-text">
+        <span>{{ __("Document category name", 'documensobridge') }}</span>
+    </div>
+
+    {{ fields.textField(
+        'category_name',
+        item.fields['category_name'],
+        __('Category name', 'documensobridge')
+    ) }}
 
     <div class="hr"></div>
 

@@ -25,14 +25,16 @@ function plugin_init_documensobridge() {
    $plugin = new Plugin();
 
    if ($plugin->isInstalled('documensobridge') && $plugin->isActive('documensobridge')) {
+      PluginDocumensoBridgeConfig::loadInSession();
+      
       // Cuando recibe item_add llama a la función de documenso
       $PLUGIN_HOOKS['item_add']['documensobridge'] = [
          'Document_Item' => 'plugin_documensobridge_document_add',
       ];
 
       if(Session::haveRight('config', UPDATE)) {
-         $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['documensobridge'] = '../../front/config.form.php?forcetab=PluginDocumensoBridge$1';
-         Plugin::registerClass(PluginDocumensoBridge::class, ['addtabon' => [Config::class]]);
+         $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['documensobridge'] = '../../front/config.form.php?forcetab=PluginDocumensoBridgeConfig$1';
+         Plugin::registerClass(PluginDocumensoBridgeConfig::class, ['addtabon' => [Config::class]]);
       }
    }
 }

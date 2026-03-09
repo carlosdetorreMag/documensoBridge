@@ -1,5 +1,7 @@
 <?php
 
+include_once __DIR__ . '/inc/config.class.php';
+
 /**
  * Plugin install process
  *
@@ -44,6 +46,9 @@ function plugin_documensobridge_install()
         $DB->doQuery($query_insert);
     }
 
+    // Configuración del plugin
+    PluginDocumensobridgeConfig::install();
+
     return true;
 }
 
@@ -69,6 +74,9 @@ function plugin_documensobridge_uninstall()
         $query_delete = "DELETE FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name)."'";
         $DB->doQuery($query_delete);
     }
+
+    // Configuración del plugin
+    PluginDocumensobridgeConfig::uninstall();
 
     return true;
 }
