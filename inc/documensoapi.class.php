@@ -7,15 +7,16 @@ class PluginDocumensobridgeDocumensoAPI {
      * Realiza todas las llamadas necesarias para subir el archivo a Documenso con la firma adjunta
      * @param int $ticket
      * @param int $file_path
+     * @param mysqli_result $config Valor de la configuración del plugin
      * @return void
      */
-    public static function sendToDocumenso(Ticket $ticket, $file_path) {
+    public static function sendToDocumenso(Ticket $ticket, $file_path, $config) {
 
         $api_key = "api_ms8ai07aukoswdkw";
         $endpoint = "http://10.100.200.19:3000/api/v2/document/create";
 
         $payload = [
-            "title"        => "Albaran_doc" . $ticket->fields['id'],
+            "title"        => "Albaran " . $ticket->fields['name'],
             "externalId"  => "GLPIALB_142221_" . $ticket->fields['id']
         ];
 

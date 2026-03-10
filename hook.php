@@ -83,7 +83,15 @@ function plugin_documensobridge_uninstall()
 
 function plugin_documensobridge_document_add($document_item) {
     global $DB;
-    $category_name= "documenso_plugin_header";
+    $query_config= "SELECT * FROM `glpi_plugin_documenso_bridgeconfigs` WHERE id = 1";
+    $result_config= $DB->doQuery($query_config);
+    $config_data = $DB->fetchAssoc($result_config);
+
+    $category_name= $config_data["category_name"];
+
+    if($config_data["category_name"]== ''){
+        $category_name= "documenso_plugin_header";
+    }
 
     if ($document_item->fields['itemtype'] !== 'Ticket') {
         return;
@@ -118,5 +126,5 @@ function plugin_documensobridge_document_add($document_item) {
     // Llamar API
     include_once(__DIR__ . "/inc/documensoapi.class.php");
    
-    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path);
+    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data);
 }
