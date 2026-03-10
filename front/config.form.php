@@ -37,8 +37,7 @@
 //header("Location:../../central.php");
 
 // Entry menu case
-include(GLPI_ROOT . '/plugins/documenso/inc/config.class.php');
-include(__DIR__ . '/../../../inc/includes.php');
+include_once(__DIR__ . '/../inc/config.class.php');
 
 // Comprobación de permisos
 Session::checkRight('config', UPDATE);

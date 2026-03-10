@@ -33,7 +33,7 @@ function plugin_documensobridge_install()
             (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
             VALUES (
                 '".$DB->escape($category_name)."',                                            -- name
-                'Este es la categoria por defecto para subir los documentos a Documenso. Se recomienda no modificar la categoría',     -- comment
+                'Esta es la categoria por defecto para subir los documentos a Documenso. Se recomienda no modificar la categoria fuera de la configuracion del plugin.',     -- comment
                 0,                                                                            -- documentcategories_id
                 '".$DB->escape($category_name)."',                                            -- completename
                 1,                                                                            -- level
@@ -47,7 +47,7 @@ function plugin_documensobridge_install()
     }
 
     // Configuración del plugin
-    PluginDocumensobridgeConfig::install();
+    PluginDocumensoBridgeConfig::install();
 
     return true;
 }
@@ -76,7 +76,7 @@ function plugin_documensobridge_uninstall()
     }
 
     // Configuración del plugin
-    PluginDocumensobridgeConfig::uninstall();
+    PluginDocumensoBridgeConfig::uninstall();
 
     return true;
 }
@@ -108,11 +108,6 @@ function plugin_documensobridge_document_add($document_item) {
     if($document->fields['documentcategories_id']!= $category_id){
         return;
     }
-
-    Toolbox::logInFile(
-        "documensobridge",
-        "DOC FIELDS: $document->fields['documentcategories_id'] y  $category_id\n"
-    );
 
     $file_path = GLPI_DOC_DIR . "/" . $document->fields['filepath'];
 

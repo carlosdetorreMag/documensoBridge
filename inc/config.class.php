@@ -75,7 +75,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
         TemplateRenderer::getInstance()->display(
             '@documensobridge/config.html.twig',
             [
-                'action'  => Toolbox::getItemTypeFormURL(self::class),
+                'action'  => '/plugins/documensobridge/front/config.form.php',
                 'item'    => $this,
             ],
         );
@@ -106,12 +106,16 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
         /** @var DBmysql $DB */
         global $DB;
 
-        $table = 'glpi_plugin_documenso_bridgeconfigs';
+        $default_charset= DBConnection::getDefaultCharset();
+        $default_collation= DBConnection::getDefaultCollation();
+        $default_key_sign= DBConnection::getDefaultPrimaryKeySignOption();
+
+        $table = getTableForItemType(self::class);
 
         if (!$DB->tableExists($table)) {
 
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-                     `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+                     `id` INT(11) {$default_key_sign} NOT NULL AUTO_INCREMENT,
                      `page_value` TINYINT NOT NULL DEFAULT 1,
                      `posX_value` FLOAT NOT NULL DEFAULT 0.5,
                      `posY_value` FLOAT NOT NULL DEFAULT 0.5,
@@ -119,7 +123,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                      `width_value` FLOAT NOT NULL DEFAULT 5,
                      `category_name` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_header',
                PRIMARY KEY  (`id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
             $DB->doQuery($query);
 
             $DB->insert($table, ['id' => 1]);
@@ -144,6 +148,80 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
         $DB->doQuery($query);
 
         return true;
+    }
+
+    /**
+     * Call the post update function
+     *
+     * @return void
+     */
+    function post_updateItem($history = 1) {
+        $this->plugin_documensobridge_config_update_hook();
+    }
+
+    /**
+     * Update the docuement category name when its done by the plugin configuration
+     *
+     * @return bool True if success
+     */
+    public function plugin_documensobridge_config_update_hook() {
+        // Verifica si se actualizó category_name
+        if (isset($this->input['category_name'])) {
+            $newCategory = $this->input['category_name'] ?? 'documenso_plugin_header';
+            if($newCategory == ''){
+                $newCategory= 'documenso_plugin_header';
+            }
+            $comment= 'Esta es la categoria por defecto para subir los documentos a Documenso. Se recomienda no modificar la categoria fuera de la configuracion del plugin.';
+
+            global $DB;
+
+            $table = "glpi_documentcategories";
+            $query_select = "SELECT id, name FROM `$table`
+                            WHERE comment= '".$comment."'";
+            $result= $DB->doQuery($query_select);
+
+            if ($DB->numrows($result) > 0) {
+                $row = $DB->fetchAssoc($result);
+                $category_id = $row['id'];
+
+                $query_update = "UPDATE `$table` 
+                        SET name = '".$DB->escape($newCategory)."'
+                        WHERE id = '".$category_id."'";
+                $DB->doQuery($query_update);
+
+            } else if ($DB->numrows($result) == 0){
+                // Si no existe ninguna línea con la categoría, se vuelve a crear una nueva
+                $category_name= "documenso_plugin_header";
+                $query_check = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$comment."'";
+                $result_insert = $DB->doQuery($query_check);
+
+                if(!$DB->numrows($result_insert)){
+                    $query_insert = "INSERT INTO `glpi_documentcategories` 
+                        (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
+                        VALUES (
+                            '".$DB->escape($category_name)."',                                            -- name
+                            '".$comment."',                                                               -- comment
+                            0,                                                                            -- documentcategories_id
+                            '".$DB->escape($category_name)."',                                            -- completename
+                            1,                                                                            -- level
+                            NULL,                                                                         -- ancestors_cache
+                            '{}',                                                                         -- sons_cache
+                            NOW(),                                                                        -- date_creation
+                            NOW()                                                                         -- date_mod
+                        )";
+
+                    $DB->doQuery($query_insert);
+                }
+            } else{
+                // Sale si se ha creado otra categoría con la misma descripción.
+                return false;
+            }
+
+            return true;
+        }
+
+        // No se actualizó la configuración
+        return false;
     }
 
 

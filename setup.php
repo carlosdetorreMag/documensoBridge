@@ -34,7 +34,7 @@ function plugin_init_documensobridge() {
 
       if(Session::haveRight('config', UPDATE)) {
          $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['documensobridge'] = '../../front/config.form.php?forcetab=PluginDocumensoBridgeConfig$1';
-         Plugin::registerClass(PluginDocumensoBridgeConfig::class, ['addtabon' => [Config::class]]);
+         Plugin::registerClass(PluginDocumensoBridgeConfig::class, ['addtabon' => [Config::class]]);  
       }
    }
 }
