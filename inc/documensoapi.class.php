@@ -42,7 +42,7 @@ class PluginDocumensobridgeDocumensoAPI {
         if ($httpcode === 200) {
             $data = json_decode($response, true);
             
-            if(!self::createRecipients($data['id'], $ticket->fields['users_id_recipient'])){
+            if(!self::createRecipients($data['id'], $ticket, $config)){
                 return;
             }
 
@@ -56,29 +56,50 @@ class PluginDocumensobridgeDocumensoAPI {
     /**
      * Verifica que la función cree correctamente los recipientes necesarios
      * @param int $documenso_id
-     * @param int $requester_id
+     * @param Ticket $ticket
+     * @param mysqli_result $config Valor de la configuración del plugin
      * @return bool
      */
-    public static function createRecipients($documenso_id, $requester_id): bool{
+    public static function createRecipients($documenso_id, $ticket, $config): bool{
         $api_key= "api_ms8ai07aukoswdkw";
-        $endpoint = "http://10.100.200.19:3000/api/v2/recipient/create";
+        $endpoint = "http://10.100.200.19:3000/api/v2/document/recipient/create";
+        
+        global $DB;
+        
+        $query_requester= "SELECT * FROM glpi_tickets_users WHERE tickets_id = '".$ticket->fields["id"]."' AND type = 1;";
+        $result_req= $DB->doQuery($query_requester);
 
-        $user= new User();
-        $user->getFromDB($requester_id);
+        if ($DB->numrows($result_req)== 0 || $DB->numrows($result_req) > 1) {
+            Toolbox::logInFile(
+                "documensobridge",
+                "ONLY ONE REQUESTER/OBSERVER FOR EACH TICKET\n"
+            );         
+            return false;
+        }
+        $requester = $DB->fetchAssoc($result_req);
+        $requester_id = $requester['users_id'];
 
-        $requester_fullname = $user->fields['firstname'] . " " . $user->fields['realname'];
-        $requester_email= $user->fields['email'];
+        $query_requester_info= "SELECT 
+                    u.firstname, 
+                    u.realname, 
+                    e.email 
+                FROM glpi_users AS u
+                LEFT JOIN glpi_useremails AS e ON u.id = e.users_id
+                WHERE u.id = '".$requester_id."'";
 
+        $result_req_info= $DB->doQuery($query_requester_info);
+        $requester_info = $DB->fetchAssoc($result_req_info);
 
         Toolbox::logInFile(
             "documensobridge",
-            "SECOND FUNCTION TRIGGERED\n"
-        );
+            "ID: " . $requester_id . " USER NAME: " . $requester_info['firstname'] . " " . $requester_info['realname'] . "USER EMAIL: " . $requester_info['email'] . "\n"
+        );    
         
-        return false;
-            
-        $payload = [
-            "documentId" => $documensoId,
+        $requester_fullname = $requester_info['firstname'] . " " . $requester_info['realname'];
+        $requester_email= $requester_info['email'];
+                
+        $body = [
+            "documentId" => $documenso_id,
             "recipient" => [
                 "email" => $requester_email,
                 "name" => $requester_fullname,
@@ -94,12 +115,10 @@ class PluginDocumensobridgeDocumensoAPI {
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer $api_key"
+                "Authorization: Bearer $api_key",
+                "Content-Type: application/json"
             ],
-            CURLOPT_POSTFIELDS => [
-                "payload" => json_encode($payload),
-                //"file" => new CURLFile($file_path, 'application/pdf')
-            ]
+            CURLOPT_POSTFIELDS => json_encode($body)
         ]);
 
         $response = curl_exec($ch);
@@ -108,14 +127,19 @@ class PluginDocumensobridgeDocumensoAPI {
         
         if ($httpcode === 200) {
             $data = json_decode($response, true);
-            
-            self::createRecipients($data['id']);
-            self::designFields();
-            self::storeDocumensoId($ticket->fields['id'], $data['id']);
+            Toolbox::logInFile(
+                "documensobridge",
+                "Second Function success\n"
+            );  
+            return true;
         }
 
+        Toolbox::logInFile(
+            "documensobridge",
+            "ERROR Second Function\n"
+        ); 
 
-        //$ch = curl_init();
+        return false;
     }
 
     public static function designFields(): bool{
