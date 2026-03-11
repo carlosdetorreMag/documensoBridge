@@ -11,9 +11,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @return void
      */
     public static function sendToDocumenso(Ticket $ticket, $file_path, $config) {
+        $env = parse_ini_file(__DIR__ . '/../.env');
 
-        $api_key = "api_ms8ai07aukoswdkw";
-        $endpoint = "http://10.100.200.19:3000/api/v2/document/create";
+        $api_key = $env["DOC_API_KEY"];
+        $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_CREATE"];
 
         $payload = [
             "title"        => "Albaran " . $ticket->fields['name'],
@@ -61,8 +62,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @return bool
      */
     public static function createRecipients($documenso_id, $ticket, $config): bool{
-        $api_key= "api_ms8ai07aukoswdkw";
-        $endpoint = "http://10.100.200.19:3000/api/v2/document/recipient/create";
+        $env = parse_ini_file(__DIR__ . '/../.env');
+
+        $api_key = $env["DOC_API_KEY"];
+        $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_RECIPIENT"];
         
         global $DB;
         
