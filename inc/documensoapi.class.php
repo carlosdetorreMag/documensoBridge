@@ -8,9 +8,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param int $ticket
      * @param int $file_path
      * @param array $config Valor de la configuración del plugin
+     * @param bool $observer Dice si se utiliza el usuario de request o de observer
      * @return void
      */
-    public static function sendToDocumenso(Ticket $ticket, $file_path, $config) {
+    public static function sendToDocumenso(Ticket $ticket, $file_path, $config, $observer) {
         $env = parse_ini_file(__DIR__ . '/../.env');
 
         $api_key = $config["documenso_api_key"];
@@ -28,7 +29,7 @@ class PluginDocumensobridgeDocumensoAPI {
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_CREATE"];
 
         $payload = [
-            "title"        => "Albaran " . $ticket->fields['name'],
+            "title"        => "Albaran Ticket" . $ticket->fields['id'],
             "externalId"  => "GLPIALB_142221_" . $ticket->fields['id']
         ];
 
@@ -62,7 +63,7 @@ class PluginDocumensobridgeDocumensoAPI {
                 return;
             }
 
-            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key)){
+            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key, $observer)){
                 return;
             }
 
@@ -211,9 +212,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param array $env Variables como el endpoint y la api key (.env)
      * @param string $user_fullname Nombre del usuario firmante
      * @param string $api_key El valor de la api key recogida en la configuración
+     * @param bool $observer Variable que determina si se envía al observer o al requester
      * @return bool
      */
-    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key): bool{
+    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key, $observer): bool{
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_FIELD"];
 

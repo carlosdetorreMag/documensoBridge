@@ -11,7 +11,9 @@ function plugin_documensobridge_install()
 {
     global $DB;
 
-    // Verificar si la tabla existe
+    // ==================================
+    //    CREACIÓN DE TABLA DOCUMENTOS
+    // ==================================
     if (!$DB->tableExists('glpi_plugin_documensobridge_documents')) {
         $query= "CREATE TABLE `glpi_plugin_documensobridge_documents` (
                 `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -25,6 +27,9 @@ function plugin_documensobridge_install()
         $DB->doQuery($query);
     }
 
+    // ====================================
+    //    CREACIÓN DE CATEGORÍA REQUESTER
+    // ====================================
     $category_name_req= "documenso_plugin_requester";
     $query_check_req = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
     $result_req = $DB->doQuery($query_check_req);
@@ -47,7 +52,34 @@ function plugin_documensobridge_install()
         $DB->doQuery($query_insert_req);
     }
 
-    // Configuración del plugin
+    // ====================================
+    //    CREACIÓN DE CATEGORÍA OBSERVER
+    // ====================================
+    $category_name_obs= "documenso_plugin_observer";
+    $query_check_obs = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_obs)."'";
+    $result_obs = $DB->doQuery($query_check_obs);
+
+    if(!$DB->numrows($result_obs)){
+        $query_insert_obs = "INSERT INTO `glpi_documentcategories` 
+            (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
+            VALUES (
+                '".$DB->escape($category_name_obs)."',                                            -- name
+                'Esta es la categoria por defecto para subir los documentos a Documenso y se enlaza con el usuario del Observador. NO se debe modificar nada de la categoria fuera de la configuracion del plugin.',     -- comment
+                0,                                                                            -- documentcategories_id
+                '".$DB->escape($category_name_obs)."',                                        -- completename
+                1,                                                                            -- level
+                NULL,                                                                         -- ancestors_cache
+                '{}',                                                                         -- sons_cache
+                NOW(),                                                                        -- date_creation
+                NOW()                                                                         -- date_mod
+            )";
+
+        $DB->doQuery($query_insert_obs);
+    }
+
+    // ====================================
+    //     CREACIÓN DE CONFIGURACIÓN
+    // ====================================
     PluginDocumensoBridgeConfig::install();
 
     return true;
@@ -62,36 +94,69 @@ function plugin_documensobridge_uninstall()
 {
     global $DB;
 
+    // =======================================
+    //    ELIMINACIÓN DE TABLA DE DOCUMENTOS
+    // =======================================
     if ($DB->tableExists('glpi_plugin_documensobridge_documents')) {
         $query = 'DROP TABLE `glpi_plugin_documensobridge_documents`';
         $DB->doQuery($query);
     }
 
-    $category_name_req= "documenso_plugin_requester";
-    $query_check_req = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
+    // ========================================
+    //    ELIMINACIÓN DE CATEGORÍA REQUESTER
+    // ========================================
+    $category_comment_req= 'Esta es la categoria por defecto para subir los documentos a Documenso y se enlaza con el usuario del Solicitante. NO se debe modificar nada de la categoria fuera de la configuracion del plugin.';
+    $query_check_req = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$DB->escape($category_comment_req)."'";
     $result_req = $DB->doQuery($query_check_req);
     
     if($DB->numrows($result_req)){
-        $query_delete_req = "DELETE FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
+        $query_delete_req = "DELETE FROM `glpi_documentcategories` WHERE comment = '".$DB->escape($category_comment_req)."'";
         $DB->doQuery($query_delete_req);
     }
 
-    // Configuración del plugin
+
+    // ========================================
+    //    ELIMINACIÓN DE CATEGORÍA REQUESTER
+    // ========================================
+    $category_comment_obs= 'Esta es la categoria por defecto para subir los documentos a Documenso y se enlaza con el usuario del Observador. NO se debe modificar nada de la categoria fuera de la configuracion del plugin.';
+    $query_check_obs = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$DB->escape($category_comment_obs)."'";
+    $result_obs = $DB->doQuery($query_check_obs);
+    
+    if($DB->numrows($result_obs)){
+        $query_delete_obs = "DELETE FROM `glpi_documentcategories` WHERE comment = '".$DB->escape($category_comment_obs)."'";
+        $DB->doQuery($query_delete_obs);
+    }
+
+    // ==================================
+    //    ELIMINACIÓN DE CONFIGURACIÓN
+    // ==================================
     PluginDocumensoBridgeConfig::uninstall();
 
     return true;
 }
 
+/**
+ * Función que comienza el flujo de ejecución del plugin
+ * @param $document_item Contiene la información suficiente del documento
+ * @return void
+ */
 function plugin_documensobridge_document_add($document_item) {
     global $DB;
     $query_config= "SELECT * FROM `glpi_plugin_documenso_bridgeconfigs` WHERE id = 1";
     $result_config= $DB->doQuery($query_config);
     $config_data = $DB->fetchAssoc($result_config);
 
+    $observer= false;    
+
     $category_name_req= $config_data["category_name_requester"];
+    $category_name_obs= $config_data["category_name_observer"];
 
     if($config_data["category_name_requester"]== ''){
         $category_name_req= "documenso_plugin_requester";
+    }
+
+    if($config_data["category_name_observer"]== ''){
+        $category_name_req= "documenso_plugin_observer";
     }
 
     if ($document_item->fields['itemtype'] !== 'Ticket') {
@@ -111,7 +176,18 @@ function plugin_documensobridge_document_add($document_item) {
     
     // Verificar que sea la categoría exacta del plugin
     if($document->fields['documentcategories_id']!= $category_id){
-        return;
+        $new_query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_obs)."'";
+        $new_result = $DB->doQuery($new_query_category_id);
+        $row = $DB->fetchAssoc($new_result);
+        $category_id = $row['id'];
+
+        // No es un error, es simplemente una subida de documento con una categoría que no es del plugin
+        if($document->fields['documentcategories_id']!= $category_id){
+            return;
+        }
+        else{
+            $observer= true;
+        }
     }
 
     // Verificar que sea PDF
@@ -133,5 +209,5 @@ function plugin_documensobridge_document_add($document_item) {
     // Llamar API
     include_once(__DIR__ . "/inc/documensoapi.class.php");
    
-    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data);
+    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data, $observer);
 }
