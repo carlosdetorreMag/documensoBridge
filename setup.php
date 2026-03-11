@@ -1,7 +1,6 @@
 <?php
 
 use Glpi\Plugin\Hooks;
-use Glpi\Document\Document_Item;
 
 define('PLUGIN_DOCUMENSOBRIDGE_VERSION', '0.1.0');
 // Minimal GLPI version, inclusive

@@ -121,7 +121,9 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                      `posY_value` FLOAT NOT NULL DEFAULT 0.5,
                      `height_value` FLOAT NOT NULL DEFAULT 5,
                      `width_value` FLOAT NOT NULL DEFAULT 5,
-                     `category_name` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_header',
+                     `category_name_requester` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_requester',
+                     `category_name_observer` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_observer',
+                     `documenso_api_key` VARCHAR(250) DEFAULT NULL,
                PRIMARY KEY  (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
             $DB->doQuery($query);
@@ -151,7 +153,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
     }
 
     /**
-     * Call the post update function
+     * Llama a la función de actualización del nombre de la categoría del documento concreto
      *
      * @return void
      */
@@ -160,28 +162,31 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
     }
 
     /**
-     * Update the docuement category name when its done by the plugin configuration
+     * Actualiza el nombre de la categoría modificada en la página de configuración
      *
      * @return bool True if success
      */
     public function plugin_documensobridge_config_update_hook() {
         // Verifica si se actualizó category_name
-        if (isset($this->input['category_name'])) {
-            $newCategory = $this->input['category_name'] ?? 'documenso_plugin_header';
+        if (isset($this->input['category_name_requester'])) {
+            
+            $newCategory = $this->input['category_name_requester'] ?? 'documenso_plugin_requester';
+            
             if($newCategory == ''){
-                $newCategory= 'documenso_plugin_header';
+                $newCategory= 'documenso_plugin_requester';
             }
-            $comment= 'Esta es la categoria por defecto para subir los documentos a Documenso. Se recomienda no modificar la categoria fuera de la configuracion del plugin.';
+
+            $comment_req= 'Esta es la categoria por defecto para subir los documentos a Documenso y se enlaza con el usuario del Solicitante. NO se debe modificar nada de la categoria fuera de la configuracion del plugin.';
 
             global $DB;
 
             $table = "glpi_documentcategories";
-            $query_select = "SELECT id, name FROM `$table`
-                            WHERE comment= '".$comment."'";
-            $result= $DB->doQuery($query_select);
+            $query_select_req = "SELECT id, name FROM `$table`
+                            WHERE comment= '".$comment_req."'";
+            $result_req= $DB->doQuery($query_select_req);
 
-            if ($DB->numrows($result) > 0) {
-                $row = $DB->fetchAssoc($result);
+            if ($DB->numrows($result_req) > 0) {
+                $row = $DB->fetchAssoc($result_req);
                 $category_id = $row['id'];
 
                 $query_update = "UPDATE `$table` 
@@ -189,10 +194,10 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                         WHERE id = '".$category_id."'";
                 $DB->doQuery($query_update);
 
-            } else if ($DB->numrows($result) == 0){
+            } else if ($DB->numrows($result_req) == 0){
                 // Si no existe ninguna línea con la categoría, se vuelve a crear una nueva
-                $category_name= "documenso_plugin_header";
-                $query_check = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$comment."'";
+                $category_name= "documenso_plugin_requester";
+                $query_check = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$comment_req."'";
                 $result_insert = $DB->doQuery($query_check);
 
                 if(!$DB->numrows($result_insert)){
@@ -200,7 +205,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                         (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
                         VALUES (
                             '".$DB->escape($category_name)."',                                            -- name
-                            '".$comment."',                                                               -- comment
+                            '".$comment_req."',                                                               -- comment
                             0,                                                                            -- documentcategories_id
                             '".$DB->escape($category_name)."',                                            -- completename
                             1,                                                                            -- level

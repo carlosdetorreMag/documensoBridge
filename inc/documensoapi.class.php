@@ -13,7 +13,18 @@ class PluginDocumensobridgeDocumensoAPI {
     public static function sendToDocumenso(Ticket $ticket, $file_path, $config) {
         $env = parse_ini_file(__DIR__ . '/../.env');
 
-        $api_key = $env["DOC_API_KEY"];
+        $api_key = $config["documenso_api_key"];
+
+        if($api_key === NULL || $api_key ===""){
+            Session::addMessageAfterRedirect(
+                __('Debes de especificar la conexión con documenso en la configuración del plugin.'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_CREATE"];
 
         $payload = [
@@ -47,24 +58,34 @@ class PluginDocumensobridgeDocumensoAPI {
             $user_fullname= null;
             $user_email= null;
                 
-            if(!self::createRecipients($documenso_id, $ticket, $env, $recipient_id, $user_fullname, $user_email)){
+            if(!self::createRecipients($documenso_id, $ticket, $env, $api_key, $recipient_id, $user_fullname, $user_email)){
                 return;
             }
 
-            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname)){
+            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key)){
                 return;
             }
 
-            if(!self::distributeDocument($documenso_id, $env, $user_fullname, $user_email)){
+            if(!self::distributeDocument($documenso_id, $env, $user_fullname, $user_email, $api_key)){
                 return;
             }
 
             self::storeDocumensoId($ticket->fields['id'], $documenso_id, $recipient_id);
         }
 
+        else if($httpcode === 401){
+            Session::addMessageAfterRedirect(
+                __('La API KEY especificada en la configuración no es válida.'),
+                false,
+                ERROR
+            );
+
+            return;
+        }
+
         else{
             Session::addMessageAfterRedirect(
-                __('Hubo un error en la llamada al crear el documento en documenso'),
+                __('Hubo un error en la llamada al crear el documento en documenso.'),
                 false,
                 ERROR
             );
@@ -76,14 +97,14 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param int $documenso_id Id del documento de documenso
      * @param Ticket $ticket Objeto del ticket a utilizar de referencia
      * @param array $env Variables como el endpoint y la api key (.env)
+     * @param string $api_key El valor de la api key recogida en la configuración
      * @param int|null $recipient_id Id del recipiente creado en la función (output)
      * @param string|null $user_fullname Nombre completo del usuario a rellenar (output)
      * @param string|null $user_email Email del usuario a rellenar (output)
      * @return bool
      */
-    public static function createRecipients($documenso_id, $ticket, $env, &$recipient_id, &$user_fullname, &$user_email): bool{
+    public static function createRecipients($documenso_id, $ticket, $env, $api_key, &$recipient_id, &$user_fullname, &$user_email): bool{
 
-        $api_key = $env["DOC_API_KEY"];
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_RECIPIENT"];
         
         global $DB;
@@ -114,7 +135,7 @@ class PluginDocumensobridgeDocumensoAPI {
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
             Session::addMessageAfterRedirect(
-                __('Añade solo un requester/observer por ticket'),
+                __('Añade solo un requester/observer por ticket.'),
                 false,
                 ERROR
             );
@@ -174,7 +195,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada al crear el recipiente'),
+            __('Hubo un error en la llamada al crear el recipiente.'),
             false,
             ERROR
         );
@@ -189,11 +210,11 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param array $config Valor de la configuración del plugin
      * @param array $env Variables como el endpoint y la api key (.env)
      * @param string $user_fullname Nombre del usuario firmante
+     * @param string $api_key El valor de la api key recogida en la configuración
      * @return bool
      */
-    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname): bool{
+    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key): bool{
 
-        $api_key = $env["DOC_API_KEY"];
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_FIELD"];
 
         $body = [
@@ -238,7 +259,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a crear campos'),
+            __('Hubo un error en la llamada a crear campos.'),
             false,
             ERROR
         );
@@ -252,11 +273,11 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param array $env Variables como el endpoint y la api key (.env)
      * @param string $user_fullname Nombre del usuario firmante
      * @param string $user_email Email del usuario firmante
+     * @param string $api_key El valor de la api key recogida en la configuración
      * @return bool
      */
-    public static function distributeDocument($documenso_id, $env, $user_fullname, $user_email): bool{
+    public static function distributeDocument($documenso_id, $env, $user_fullname, $user_email, $api_key): bool{
 
-        $api_key = $env["DOC_API_KEY"];
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_DISTRIBUTE"];
 
         $body = [
@@ -302,7 +323,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a distribuir el documento'),
+            __('Hubo un error en la llamada a distribuir el documento.'),
             false,
             ERROR
         );

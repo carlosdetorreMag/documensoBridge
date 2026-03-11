@@ -77,13 +77,29 @@
     ) }}
 
     <div class="hr-text">
-        <span>{{ __("Document category name", 'documensobridge') }}</span>
+        <span>{{ __("Document categories names", 'documensobridge') }}</span>
     </div>
 
     {{ fields.textField(
-        'category_name',
-        item.fields['category_name'],
-        __('Category name', 'documensobridge')
+        'category_name_requester',
+        item.fields['category_name_requester'],
+        __('Requester category name', 'documensobridge')
+    ) }}
+
+    {{ fields.textField(
+        'category_name_observer',
+        item.fields['category_name_observer'],
+        __('Observer category name', 'documensobridge')
+    ) }}
+
+    <div class="hr-text">
+        <span>{{ __("Documenso connection", 'documensobridge') }}</span>
+    </div>
+
+    {{ fields.textField(
+        'documenso_api_key',
+        item.fields['documenso_api_key'],
+        __('Documenso API Key', 'documensobridge')
     ) }}
 
     <div class="hr"></div>
