@@ -15,8 +15,9 @@ function plugin_documensobridge_install()
     if (!$DB->tableExists('glpi_plugin_documensobridge_documents')) {
         $query= "CREATE TABLE `glpi_plugin_documensobridge_documents` (
                 `id` INT(11) NOT NULL AUTO_INCREMENT,
-                `tickets_id` INT(11) NOT NULL DEFAULT 0,
-                `documenso_id` VARCHAR(255) DEFAULT '',
+                `ticket_id` INT(11) NOT NULL DEFAULT 0,
+                `documenso_id` INT(11) DEFAULT 0,
+                `recipient_signer_id` INT(11) DEFAULT 0,
                 `date_add` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
