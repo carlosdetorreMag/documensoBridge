@@ -22,12 +22,34 @@ function plugin_documensobridge_install()
     if (!$DB->tableExists('glpi_plugin_documensobridge_documents')) {
         $query= "CREATE TABLE `glpi_plugin_documensobridge_documents` (
                 `id` INT(11) {$default_key_sign} NOT NULL AUTO_INCREMENT,
-                `ticket_id` INT(11) NOT NULL DEFAULT 0,
-                `documenso_id` INT(11) NOT NULL DEFAULT 0,
-                `user_signer_id` INT (11) NOT NULL DEFAULT 0,
-                `recipient_signer_id` INT(11) NOT NULL DEFAULT 0,
+                `ticket_id` INT(11) {$default_key_sign} NOT NULL DEFAULT 0,
+                `document_gpli_id` INT(11) {$default_key_sign} NOT NULL DEFAULT 0,
+                `documenso_id` INT(11) {$default_key_sign} DEFAULT NULL,
+                `user_signer_id` INT (11) {$default_key_sign} DEFAULT NULL,
+                `recipient_signer_id` INT(11) {$default_key_sign} DEFAULT NULL,
+                `state` VARCHAR(20) NOT NULL DEFAULT 'WAITING',
                 `date_add` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (`id`)
+                PRIMARY KEY (`id`),
+                KEY `ticket_id` (`ticket_id`),
+                KEY `user_signer_id` (`user_signer_id`),
+
+                CONSTRAINT `fk_documensobridge_ticket`
+                FOREIGN KEY (`ticket_id`)
+                REFERENCES `glpi_tickets` (`id`)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE,
+
+                CONSTRAINT `fk_documensobridge_user_signer`
+                FOREIGN KEY (`user_signer_id`)
+                REFERENCES `glpi_users` (`id`)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE,
+
+                CONSTRAINT `fk_documensobridge_document_glpi`
+                FOREIGN KEY (`document_gpli_id`)
+                REFERENCES `glpi_documents` (`id`)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset};";
 
         $DB->doQuery($query);
@@ -230,5 +252,5 @@ function plugin_documensobridge_document_add($document_item) {
     // Llamar API
     include_once(__DIR__ . "/inc/documensoapi.class.php");
 
-    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data, $observer);
+    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data, $observer, $document->fields["id"]);
 }

@@ -9,9 +9,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param string $file_path Ruta del archivo PDF subido con la categoría correspondiente
      * @param array $config Valor de la configuración del plugin
      * @param bool $observer Dice si se utiliza el usuario de request o de observer
+     * @param int $document_id Identificador del documento del ticket.
      * @return void
      */
-    public static function sendToDocumenso(Ticket $ticket, $file_path, $config, $observer) {
+    public static function sendToDocumenso(Ticket $ticket, $file_path, $config, $observer, $document_id) {
         $env = parse_ini_file(__DIR__ . '/../.env');
 
         $api_key = $config["documenso_api_key"];
@@ -27,9 +28,12 @@ class PluginDocumensobridgeDocumensoAPI {
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_CREATE"];
 
+        // Inserta la instancia en la tabla
+        $plugin_id= self::insertPluginDocumentsTable($ticket->fields['id'], $document_id);
+
         $payload = [
             "title"        => "Albaran Ticket" . $ticket->fields['id'], // Retocar nombre de archivo
-            "externalId"  => "GLPIALB_142221_" . $ticket->fields['id']
+            "externalId"  => "GLPIALB_142221_" . $ticket->fields['id'] . "_" . $plugin_id
         ];
 
         $ch = curl_init();
@@ -71,7 +75,7 @@ class PluginDocumensobridgeDocumensoAPI {
                 return;
             }
 
-            self::storeDocumensoId($ticket->fields['id'], $documenso_id, $recipient_id, $user_id);
+            self::updatePluginDocumentsTable($plugin_id, $documenso_id, $recipient_id, $user_id);
 
             Session::addMessageAfterRedirect(
                 __('El archivo se envió a Documenso exitosamente.'),
@@ -347,19 +351,40 @@ class PluginDocumensobridgeDocumensoAPI {
     /**
      * Almacena un log en la tabla de la base de datos creada del plugin
      * @param int $ticket_id Identificador del ticket
+     * @param int $document_id Identificador del documento de GLPI asociado
+     * @return int Devuelve el id de la fila insertada
+     */
+    private static function insertPluginDocumentsTable($ticket_id, $document_id) {
+
+        global $DB;
+
+        $query= "INSERT INTO `glpi_plugin_documensobridge_documents`
+                       (`ticket_id`, `document_gpli_id`)
+                VALUES ($ticket_id, $document_id);";
+                       
+        $DB->doQuery($query);
+
+        return $DB->insertId();
+    }
+
+    /**
+     * Almacena un log en la tabla de la base de datos creada del plugin
+     * @param int $plugin_id Identificador de la instancia de la tabla del plugin concreta
      * @param int $documenso_id Identificador del documento de documenso asociado
      * @param int $recipient_signer_id Identidicador del recipiente del firmante
      * @param int $user_id Identificador del usuario firmante
      * @return void
      */
-    private static function storeDocumensoId($ticket_id, $documenso_id, $recipient_signer_id, $user_id) {
+    private static function updatePluginDocumentsTable($plugin_id, $documenso_id, $recipient_signer_id, $user_id) {
 
         global $DB;
 
-        $query= "INSERT INTO `glpi_plugin_documensobridge_documents`
-                       (`ticket_id`, `documenso_id`, `user_signer_id`, `recipient_signer_id`)
-                VALUES ($ticket_id, $documenso_id, $user_id, $recipient_signer_id);";
-                       
-        $DB->doQuery($query);
+        $query_update = "UPDATE `glpi_plugin_documensobridge_documents` 
+                    SET documenso_id = '".$DB->escape($documenso_id)."', 
+                        user_signer_id = '".$DB->escape($user_id)."',
+                        recipient_signer_id = '".$DB->escape($recipient_signer_id)."'
+                    WHERE id = '".$plugin_id."'";
+        $DB->doQuery($query_update);
+
     }
 }
