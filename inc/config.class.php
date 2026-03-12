@@ -98,13 +98,16 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
 
     /**
      * Install all necessary tables for the plugin
-     *
+     * @param string $category_name_requester No es null si la categoría ya existía antes de la instalación
+     * @param string $category_name_observer No es null si la categoría ya existía antes de la instalación
      * @return boolean True if success
      */
-    public static function install()
+    public static function install($category_name_requester, $category_name_observer)
     {
-        /** @var DBmysql $DB */
         global $DB;
+
+        $category_name_requester= $category_name_requester ?? 'documenso_plugin_requester';
+        $category_name_observer= $category_name_observer ?? 'documenso_plugin_observer';
 
         $default_charset= DBConnection::getDefaultCharset();
         $default_collation= DBConnection::getDefaultCollation();
@@ -114,6 +117,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
 
         if (!$DB->tableExists($table)) {
 
+            // Se crea la tabla de configuración
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
                      `id` INT(11) {$default_key_sign} NOT NULL AUTO_INCREMENT,
                      `page_value` TINYINT NOT NULL DEFAULT 1,
@@ -128,7 +132,11 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
             ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
             $DB->doQuery($query);
 
-            $DB->insert($table, ['id' => 1]);
+            // Se inserta la instancia con ID=1
+            $DB->insert($table, ['id' => 1, 
+                'category_name_requester' => $category_name_requester, 
+                'category_name_observer' => $category_name_observer
+            ]);
         }
 
         return true;
@@ -167,12 +175,17 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
      * @return bool True if success
      */
     public function plugin_documensobridge_config_update_hook() {
-        // Verifica si se actualizó category_name
+
+        $table = "glpi_documentcategories";
+
+        // =======================================
+        //       ACTUALIZACIÓN DEL REQUESTER
+        // =======================================
         if (isset($this->input['category_name_requester'])) {
             
             $newCategory = $this->input['category_name_requester'] ?? 'documenso_plugin_requester';
             
-            if($newCategory == ''){
+            if($newCategory === ''){
                 $newCategory= 'documenso_plugin_requester';
             }
 
@@ -180,12 +193,13 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
 
             global $DB;
 
-            $table = "glpi_documentcategories";
+            // Se busca la categoría del plugin por descripción
             $query_select_req = "SELECT id, name FROM `$table`
                             WHERE comment= '".$comment_req."'";
             $result_req= $DB->doQuery($query_select_req);
 
-            if ($DB->numrows($result_req) > 0) {
+            // Si se encuentra un único resultado
+            if ($DB->numrows($result_req) === 1) {
                 $row = $DB->fetchAssoc($result_req);
                 $category_id = $row['id'];
 
@@ -194,9 +208,12 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                         WHERE id = '".$category_id."'";
                 $DB->doQuery($query_update);
 
-            } else if ($DB->numrows($result_req) == 0){
-                // Si no existe ninguna línea con la categoría, se vuelve a crear una nueva
-                $category_name= "documenso_plugin_requester";
+            } 
+
+            // Si no se encuentra ningún resultado
+            else if ($DB->numrows($result_req) === 0){
+                // Se vuelve a crear una nueva categoría ya que seguramente se habrá eliminado.
+                $category_name= $newCategory;
                 $query_check = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$comment_req."'";
                 $result_insert = $DB->doQuery($query_check);
 
@@ -205,9 +222,9 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                         (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
                         VALUES (
                             '".$DB->escape($category_name)."',                                            -- name
-                            '".$comment_req."',                                                               -- comment
+                            '".$comment_req."',                                                           -- comment
                             0,                                                                            -- documentcategories_id
-                            '".$DB->escape($category_name)."',                                            -- completename
+                            'documenso_plugin_requester',                                                 -- completename
                             1,                                                                            -- level
                             NULL,                                                                         -- ancestors_cache
                             '{}',                                                                         -- sons_cache
@@ -219,13 +236,84 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                 }
             } else{
                 // Sale si se ha creado otra categoría con la misma descripción.
+                Session::addMessageAfterRedirect(
+                    __('Hay dos categorías con la misma descripción que la categoría del Solicitante. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                    false,
+                    ERROR
+                );
+            }
+        }
+
+        // =======================================
+        //      ACTUALIZACIÓN DEL OBSERVER
+        // =======================================
+        if(isset($this->input['category_name_observer'])){
+            $newCategory = $this->input['category_name_observer'] ?? 'documenso_plugin_observer';
+            
+            if($newCategory === ''){
+                $newCategory= 'documenso_plugin_observer';
+            }
+
+            $comment_obs= 'Esta es la categoria por defecto para subir los documentos a Documenso y se enlaza con el usuario del Observador. NO se debe modificar nada de la categoria fuera de la configuracion del plugin.';
+
+            global $DB;
+
+            // Se busca la categoría del plugin por descripción
+            $query_select_obs = "SELECT id, name FROM `$table`
+                            WHERE comment= '".$comment_obs."'";
+            $result_obs= $DB->doQuery($query_select_obs);
+
+            // Si se encuentra un único resultado
+            if ($DB->numrows($result_obs) === 1) {
+                $row = $DB->fetchAssoc($result_obs);
+                $category_id = $row['id'];
+
+                $query_update = "UPDATE `$table` 
+                        SET name = '".$DB->escape($newCategory)."'
+                        WHERE id = '".$category_id."'";
+                $DB->doQuery($query_update);
+
+            }
+
+            // Si no se encuentra ningún resultado
+            else if ($DB->numrows($result_obs) === 0){
+                // Se vuelve a crear una nueva categoría ya que seguramente se habrá eliminado.
+                $category_name= $newCategory;
+                $query_check = "SELECT id FROM `glpi_documentcategories` WHERE comment = '".$comment_obs."'";
+                $result_insert = $DB->doQuery($query_check);
+
+                if(!$DB->numrows($result_insert)){
+                    $query_insert = "INSERT INTO `glpi_documentcategories` 
+                        (`name`, `comment`, `documentcategories_id`, `completename`, `level`, `ancestors_cache`, `sons_cache`, `date_creation`, `date_mod`)
+                        VALUES (
+                            '".$DB->escape($category_name)."',                                            -- name
+                            '".$comment_obs."',                                                           -- comment
+                            0,                                                                            -- documentcategories_id
+                            'documenso_plugin_observer',                                                  -- completename
+                            1,                                                                            -- level
+                            NULL,                                                                         -- ancestors_cache
+                            '{}',                                                                         -- sons_cache
+                            NOW(),                                                                        -- date_creation
+                            NOW()                                                                         -- date_mod
+                        )";
+
+                    $DB->doQuery($query_insert);
+                }
+            } else{
+                // Sale si se ha creado otra categoría con la misma descripción.
+                Session::addMessageAfterRedirect(
+                    __('Hay dos categorías con la misma descripción que la categoría del Observador. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                    false,
+                    ERROR
+                );
                 return false;
             }
 
             return true;
+
         }
 
-        // No se actualizó la configuración
+        // Se actualizó la configuración pero no se modificaron los campos de observer ni requester.
         return false;
     }
 

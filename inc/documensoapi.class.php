@@ -5,8 +5,8 @@ class PluginDocumensobridgeDocumensoAPI {
 
     /**
      * Realiza todas las llamadas necesarias para subir el archivo a Documenso con la firma adjunta
-     * @param int $ticket
-     * @param int $file_path
+     * @param Ticket $ticket Información relacionada con el ticket
+     * @param string $file_path Ruta del archivo PDF subido con la categoría correspondiente
      * @param array $config Valor de la configuración del plugin
      * @param bool $observer Dice si se utiliza el usuario de request o de observer
      * @return void
@@ -22,14 +22,13 @@ class PluginDocumensobridgeDocumensoAPI {
                 false,
                 ERROR
             );
-            return false;
+            return;
         }
-
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_CREATE"];
 
         $payload = [
-            "title"        => "Albaran Ticket" . $ticket->fields['id'],
+            "title"        => "Albaran Ticket" . $ticket->fields['id'], // Retocar nombre de archivo
             "externalId"  => "GLPIALB_142221_" . $ticket->fields['id']
         ];
 
@@ -58,12 +57,13 @@ class PluginDocumensobridgeDocumensoAPI {
             $recipient_id= null;
             $user_fullname= null;
             $user_email= null;
+            $user_id= null;
                 
-            if(!self::createRecipients($documenso_id, $ticket, $env, $api_key, $recipient_id, $user_fullname, $user_email)){
+            if(!self::createRecipients($documenso_id, $ticket, $env, $api_key, $observer, $recipient_id, $user_id, $user_fullname, $user_email)){
                 return;
             }
 
-            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key, $observer)){
+            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key)){
                 return;
             }
 
@@ -71,7 +71,13 @@ class PluginDocumensobridgeDocumensoAPI {
                 return;
             }
 
-            self::storeDocumensoId($ticket->fields['id'], $documenso_id, $recipient_id);
+            self::storeDocumensoId($ticket->fields['id'], $documenso_id, $recipient_id, $user_id);
+
+            Session::addMessageAfterRedirect(
+                __('El archivo se envió a Documenso exitosamente.'),
+                false,
+                INFO
+            );
         }
 
         else if($httpcode === 401){
@@ -86,7 +92,7 @@ class PluginDocumensobridgeDocumensoAPI {
 
         else{
             Session::addMessageAfterRedirect(
-                __('Hubo un error en la llamada al crear el documento en documenso.'),
+                __('Hubo un error en la llamada al crear el documento en documenso. ERROR: '. $httpcode .''),
                 false,
                 ERROR
             );
@@ -99,22 +105,31 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param Ticket $ticket Objeto del ticket a utilizar de referencia
      * @param array $env Variables como el endpoint y la api key (.env)
      * @param string $api_key El valor de la api key recogida en la configuración
+     * @param bool $observer Variable que determina si el usuario a enviar el documento es el observer o el requester
      * @param int|null $recipient_id Id del recipiente creado en la función (output)
+     * @param int|null $user_id Identificador del usuario
      * @param string|null $user_fullname Nombre completo del usuario a rellenar (output)
      * @param string|null $user_email Email del usuario a rellenar (output)
      * @return bool
      */
-    public static function createRecipients($documenso_id, $ticket, $env, $api_key, &$recipient_id, &$user_fullname, &$user_email): bool{
+    public static function createRecipients($documenso_id, $ticket, $env, $api_key, $observer, &$recipient_id, &$user_id, &$user_fullname, &$user_email): bool{
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_RECIPIENT"];
         
         global $DB;
-        
-        $query_requester= "SELECT * FROM glpi_tickets_users WHERE tickets_id = '".$ticket->fields["id"]."' AND type = 1;";
-        $result_req= $DB->doQuery($query_requester);
+        $result= null;
 
+        if(!$observer){
+            $query_requester= "SELECT * FROM glpi_tickets_users WHERE tickets_id = '".$ticket->fields["id"]."' AND type = 1;";
+            $result= $DB->doQuery($query_requester);
+        }
+        else{
+            $query_observer= "SELECT * FROM glpi_tickets_users WHERE tickets_id = '".$ticket->fields["id"]."' AND type = 3;";
+            $result= $DB->doQuery($query_observer);
+        }
+        
         // Número incorrecto de requesters/observers
-        if ($DB->numrows($result_req)=== 0 || $DB->numrows($result_req) > 1) {
+        if ($DB->numrows($result)=== 0 || $DB->numrows($result) > 1) {
             // Elimina el documento que ha subido a documenso y devuelve error
             $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_DELETE"];
             $body = ["documentId" => $documenso_id];
@@ -136,35 +151,35 @@ class PluginDocumensobridgeDocumensoAPI {
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
             Session::addMessageAfterRedirect(
-                __('Añade solo un requester/observer por ticket.'),
+                __('Añade solo un solicitante/observador por ticket.'),
                 false,
                 ERROR
             );
             return false;
         }
 
-        $requester = $DB->fetchAssoc($result_req);
-        $requester_id = $requester['users_id'];
+        $user = $DB->fetchAssoc($result);
+        $user_id = $user['users_id'];
 
-        $query_requester_info= "SELECT 
+        $query_user_info= "SELECT 
                     u.firstname, 
                     u.realname, 
                     e.email 
                 FROM glpi_users AS u
                 LEFT JOIN glpi_useremails AS e ON u.id = e.users_id
-                WHERE u.id = '".$requester_id."'";
+                WHERE u.id = '".$user_id."'";
 
-        $result_req_info= $DB->doQuery($query_requester_info);
-        $requester_info = $DB->fetchAssoc($result_req_info);    
+        $result_user_info= $DB->doQuery($query_user_info);
+        $user_info = $DB->fetchAssoc($result_user_info);    
         
-        $requester_fullname = $requester_info['firstname'] . " " . $requester_info['realname'];
-        $requester_email= $requester_info['email'];
+        $user_email= $user_info['email'];
+        $user_fullname = $user_info['firstname'] . " " . $user_info['realname'];
                 
         $body = [
             "documentId" => $documenso_id,
             "recipient" => [
-                "email" => $requester_email,
-                "name" => $requester_fullname,
+                "email" => $user_email,
+                "name" => $user_fullname,
                 "role" => "SIGNER",
                 "signingOrder" => 1
             ]
@@ -185,9 +200,6 @@ class PluginDocumensobridgeDocumensoAPI {
 
         $response = curl_exec($ch);
         $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        $user_fullname= $requester_fullname;
-        $user_email= $requester_email;
         
         if ($httpcode === 200) {
             $data = json_decode($response, true);
@@ -196,7 +208,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada al crear el recipiente.'),
+            __('Hubo un error en la llamada al crear el recipiente. ERROR: '. $httpcode .''),
             false,
             ERROR
         );
@@ -212,10 +224,9 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param array $env Variables como el endpoint y la api key (.env)
      * @param string $user_fullname Nombre del usuario firmante
      * @param string $api_key El valor de la api key recogida en la configuración
-     * @param bool $observer Variable que determina si se envía al observer o al requester
      * @return bool
      */
-    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key, $observer): bool{
+    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key): bool{
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_FIELD"];
 
@@ -261,7 +272,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a crear campos.'),
+            __('Hubo un error en la llamada a crear campos. ERROR: '. $httpcode .''),
             false,
             ERROR
         );
@@ -325,7 +336,7 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a distribuir el documento.'),
+            __('Hubo un error en la llamada a distribuir el documento. ERROR: '. $httpcode .''),
             false,
             ERROR
         );
@@ -337,16 +348,17 @@ class PluginDocumensobridgeDocumensoAPI {
      * Almacena un log en la tabla de la base de datos creada del plugin
      * @param int $ticket_id Identificador del ticket
      * @param int $documenso_id Identificador del documento de documenso asociado
-     * @param int $recipient_requester_id Identidicador del recipiente del solicitante
+     * @param int $recipient_signer_id Identidicador del recipiente del firmante
+     * @param int $user_id Identificador del usuario firmante
      * @return void
      */
-    private static function storeDocumensoId($ticket_id, $documenso_id, $recipient_requester_id) {
+    private static function storeDocumensoId($ticket_id, $documenso_id, $recipient_signer_id, $user_id) {
 
         global $DB;
 
         $query= "INSERT INTO `glpi_plugin_documensobridge_documents`
-                       (`ticket_id`, `documenso_id`, `recipient_signer_id`)
-                VALUES ($ticket_id, $documenso_id, $recipient_requester_id);";
+                       (`ticket_id`, `documenso_id`, `user_signer_id`, `recipient_signer_id`)
+                VALUES ($ticket_id, $documenso_id, $user_id, $recipient_signer_id);";
                        
         $DB->doQuery($query);
     }
