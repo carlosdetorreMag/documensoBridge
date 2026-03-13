@@ -29,6 +29,7 @@ function plugin_documensobridge_install()
                 `recipient_signer_id` INT(11) {$default_key_sign} DEFAULT NULL,
                 `state` VARCHAR(20) NOT NULL DEFAULT 'WAITING',
                 `date_add` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `date_completed` TIMESTAMP DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `ticket_id` (`ticket_id`),
                 KEY `user_signer_id` (`user_signer_id`),

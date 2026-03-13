@@ -30,9 +30,12 @@ class PluginDocumensobridgeDocumensoAPI {
 
         // Inserta la instancia en la tabla
         $plugin_id= self::insertPluginDocumentsTable($ticket->fields['id'], $document_id);
+        $user_info= self::obtainUserInfo($ticket, $observer);
+
+        $date = new DateTime();
 
         $payload = [
-            "title"        => "Albaran Ticket" . $ticket->fields['id'], // Retocar nombre de archivo
+            "title"        => "GLPI-#" . $ticket->fields['id'] . '-' . $user_info["name"] . '-' . $date->format('dmY') . '-Albarán Material',
             "externalId"  => "GLPIALB_142221_" . $ticket->fields['id'] . "_" . $plugin_id
         ];
 
@@ -59,23 +62,20 @@ class PluginDocumensobridgeDocumensoAPI {
 
             $documenso_id= $data['id'];
             $recipient_id= null;
-            $user_fullname= null;
-            $user_email= null;
-            $user_id= null;
                 
-            if(!self::createRecipients($documenso_id, $ticket, $env, $api_key, $observer, $recipient_id, $user_id, $user_fullname, $user_email)){
+            if(!self::createRecipients($documenso_id, $env, $api_key, $user_info, $recipient_id)){
                 return;
             }
 
-            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key)){
+            if(!self::designFields($documenso_id, $recipient_id, $config, $env, $user_info, $api_key)){
                 return;
             }
 
-            if(!self::distributeDocument($documenso_id, $env, $user_fullname, $user_email, $api_key)){
+            if(!self::distributeDocument($documenso_id, $env, $user_info, $api_key)){
                 return;
             }
 
-            self::updatePluginDocumentsTable($plugin_id, $documenso_id, $recipient_id, $user_id);
+            self::updatePluginDocumentsTable($plugin_id, $documenso_id, $recipient_id, $user_info["id"]);
 
             Session::addMessageAfterRedirect(
                 __('El archivo se envió a Documenso exitosamente.'),
@@ -103,26 +103,16 @@ class PluginDocumensobridgeDocumensoAPI {
         }
     }
 
-    /**
+        /**
      * Verifica que la función cree correctamente los recipientes necesarios
      * @param int $documenso_id Id del documento de documenso
      * @param Ticket $ticket Objeto del ticket a utilizar de referencia
-     * @param array $env Variables como el endpoint y la api key (.env)
-     * @param string $api_key El valor de la api key recogida en la configuración
      * @param bool $observer Variable que determina si el usuario a enviar el documento es el observer o el requester
-     * @param int|null $recipient_id Id del recipiente creado en la función (output)
-     * @param int|null $user_id Identificador del usuario
-     * @param string|null $user_fullname Nombre completo del usuario a rellenar (output)
-     * @param string|null $user_email Email del usuario a rellenar (output)
-     * @return bool
+     * @return array
      */
-    public static function createRecipients($documenso_id, $ticket, $env, $api_key, $observer, &$recipient_id, &$user_id, &$user_fullname, &$user_email): bool{
-
-        $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_RECIPIENT"];
-        
-        global $DB;
-        $result= null;
-
+    public static function obtainUserInfo($ticket, $observer) {
+        global $DB;    
+    
         if(!$observer){
             $query_requester= "SELECT * FROM glpi_tickets_users WHERE tickets_id = '".$ticket->fields["id"]."' AND type = 1;";
             $result= $DB->doQuery($query_requester);
@@ -134,26 +124,7 @@ class PluginDocumensobridgeDocumensoAPI {
         
         // Número incorrecto de requesters/observers
         if ($DB->numrows($result)=== 0 || $DB->numrows($result) > 1) {
-            // Elimina el documento que ha subido a documenso y devuelve error
-            $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_DELETE"];
-            $body = ["documentId" => $documenso_id];
-
-            $ch = curl_init();
-
-            curl_setopt_array($ch, [
-                CURLOPT_URL => $endpoint,
-                CURLOPT_POST => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => [
-                    "Authorization: Bearer $api_key",
-                    "Content-Type: application/json"
-                ],
-                CURLOPT_POSTFIELDS => json_encode($body)
-            ]);
-
-            $response = curl_exec($ch);
-            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
+            
             Session::addMessageAfterRedirect(
                 __('Añade solo un solicitante/observador por ticket.'),
                 false,
@@ -165,7 +136,9 @@ class PluginDocumensobridgeDocumensoAPI {
         $user = $DB->fetchAssoc($result);
         $user_id = $user['users_id'];
 
-        $query_user_info= "SELECT 
+        $query_user_info= "SELECT
+                    u.id,
+                    u.name, 
                     u.firstname, 
                     u.realname, 
                     e.email 
@@ -174,10 +147,27 @@ class PluginDocumensobridgeDocumensoAPI {
                 WHERE u.id = '".$user_id."'";
 
         $result_user_info= $DB->doQuery($query_user_info);
-        $user_info = $DB->fetchAssoc($result_user_info);    
+        $user_info = $DB->fetchAssoc($result_user_info);
         
+        return $user_info;
+    }
+
+    /**
+     * Verifica que la función cree correctamente los recipientes necesarios
+     * @param int $documenso_id Id del documento de documenso
+     * @param array $env Variables como el endpoint y la api key (.env)
+     * @param string $api_key El valor de la api key recogida en la configuración
+     * @param bool $observer Variable que determina si el usuario a enviar el documento es el observer o el requester
+     * @param array $user_info Variable que contiene toda la información del firmante.
+     * @param int|null $recipient_id Id del recipiente creado en la función (output)
+     * @return bool
+     */
+    public static function createRecipients($documenso_id, $env, $api_key, $user_info, &$recipient_id): bool{
+
         $user_email= $user_info['email'];
         $user_fullname = $user_info['firstname'] . " " . $user_info['realname'];
+
+        $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_RECIPIENT"];
                 
         $body = [
             "documentId" => $documenso_id,
@@ -226,11 +216,13 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param int $recipient_id Id del recipiente del firmante
      * @param array $config Valor de la configuración del plugin
      * @param array $env Variables como el endpoint y la api key (.env)
-     * @param string $user_fullname Nombre del usuario firmante
+     * @param array $user_info Información del usuario firmante.
      * @param string $api_key El valor de la api key recogida en la configuración
      * @return bool
      */
-    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_fullname, $api_key): bool{
+    public static function designFields($documenso_id, $recipient_id, $config, $env, $user_info, $api_key): bool{
+        
+        $user_fullname = $user_info['firstname'] . " " . $user_info['realname'];
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_FIELD"];
 
@@ -288,12 +280,14 @@ class PluginDocumensobridgeDocumensoAPI {
      * Función que sube el documento a la plataforma preparado para que se firme.
      * @param int $documenso_id Id del documento de documenso
      * @param array $env Variables como el endpoint y la api key (.env)
-     * @param string $user_fullname Nombre del usuario firmante
-     * @param string $user_email Email del usuario firmante
+     * @param array $user_info Contiene toda la información del usuario firmante.
      * @param string $api_key El valor de la api key recogida en la configuración
      * @return bool
      */
-    public static function distributeDocument($documenso_id, $env, $user_fullname, $user_email, $api_key): bool{
+    public static function distributeDocument($documenso_id, $env, $user_info, $api_key): bool{
+
+        $user_email= $user_info['email'];
+        $user_fullname = $user_info['firstname'] . " " . $user_info['realname'];
 
         $endpoint = $env["DOC_SERVER"] . "" . $env["DOC_DISTRIBUTE"];
 
