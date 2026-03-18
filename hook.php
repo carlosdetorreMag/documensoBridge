@@ -23,9 +23,10 @@ function plugin_documensobridge_install()
         $query= "CREATE TABLE `glpi_plugin_documensobridge_documents` (
                 `id` INT(11) {$default_key_sign} NOT NULL AUTO_INCREMENT,
                 `ticket_id` INT(11) {$default_key_sign} NOT NULL DEFAULT 0,
-                `document_gpli_id` INT(11) {$default_key_sign} NOT NULL DEFAULT 0,
-                `documenso_id` INT(11) {$default_key_sign} DEFAULT NULL,
                 `user_signer_id` INT (11) {$default_key_sign} DEFAULT NULL,
+                `document_gpli_id` INT(11) {$default_key_sign} NOT NULL DEFAULT 0,
+                `document_gpli_signed_id` INT(11) {$default_key_sign} DEFAULT NULL,
+                `documenso_id` INT(11) {$default_key_sign} DEFAULT NULL,
                 `recipient_signer_id` INT(11) {$default_key_sign} DEFAULT NULL,
                 `state` VARCHAR(20) NOT NULL DEFAULT 'WAITING',
                 `date_add` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -48,6 +49,12 @@ function plugin_documensobridge_install()
 
                 CONSTRAINT `fk_documensobridge_document_glpi`
                 FOREIGN KEY (`document_gpli_id`)
+                REFERENCES `glpi_documents` (`id`)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE,
+
+                CONSTRAINT `fk_documensobridge_document_glpi_signed`
+                FOREIGN KEY (`document_gpli_signed_id`)
                 REFERENCES `glpi_documents` (`id`)
                 ON DELETE CASCADE
                 ON UPDATE CASCADE

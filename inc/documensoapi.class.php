@@ -36,7 +36,7 @@ class PluginDocumensobridgeDocumensoAPI {
 
         $payload = [
             "title"        => "GLPI-#" . $ticket->fields['id'] . '-' . $user_info["name"] . '-' . $date->format('dmY') . '-Albarán Material',
-            "externalId"  => "GLPIALB_142221_" . $ticket->fields['id'] . "_" . $plugin_id . '_' . $document_id
+            "externalId"  => "GLPIALB_142221_" . $ticket->fields['id'] . "_" . $plugin_id
         ];
 
         $ch = curl_init();
