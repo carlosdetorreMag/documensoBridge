@@ -2,7 +2,6 @@
       <name>documensobridge</name>
       <key>documensobridge</key>
       <state>stable</state>
-      <logo>https://raw.githubusercontent.com/pluginsGLPI/documensobridge/master/misc/logo.png</logo>
       <description>
          <short>
             <en>GLPI documensobridge plugin useful to sign documents</en>
@@ -13,10 +12,7 @@
             <es>El plugin GLPI de documensobridge es útil para firmar documentos o albaranes con Documenso</es>
          </long>
       </description>
-      <homepage>https://github.com/pluginsGLPI/documensobridge</homepage>
-      <download>https://github.com/pluginsGLPI/documensobridge/releases</download>
-      <issues>https://github.com/pluginsGLPI/documensobridge/issues</issues>
-      <readme>https://raw.githubusercontent.com/pluginsGLPI/documensobridge/master/README.md</readme>
+      <homepage>https://magtel.es/</homepage>
       <authors>
          <author>Carlos</author>
          <author>De la Torre Frías</author>
