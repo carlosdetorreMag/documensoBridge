@@ -123,8 +123,17 @@ class PluginDocumensobridgeDocumensoAPI {
         }
         
         // Número incorrecto de requesters/observers
-        if ($DB->numrows($result)=== 0 || $DB->numrows($result) > 1) {
+        if ($DB->numrows($result)=== 0) {
             
+            Session::addMessageAfterRedirect(
+                __('Añade al menos un observer/requester para enviarle el documento.'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        if($DB->numrows($result) > 1){
             Session::addMessageAfterRedirect(
                 __('Añade solo un solicitante/observador por ticket.'),
                 false,
