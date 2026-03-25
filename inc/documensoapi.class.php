@@ -30,7 +30,11 @@ class PluginDocumensobridgeDocumensoAPI {
 
         // Inserta la instancia en la tabla
         $plugin_id= self::insertPluginDocumentsTable($ticket->fields['id'], $document_id);
-        $user_info= self::obtainUserInfo($ticket, $observer);
+        $user_info= [];
+        
+        if(!self::obtainUserInfo($ticket, $observer, $user_info)){
+            return;
+        }
 
         $date = new DateTime();
 
@@ -108,9 +112,10 @@ class PluginDocumensobridgeDocumensoAPI {
      * @param int $documenso_id Id del documento de documenso
      * @param Ticket $ticket Objeto del ticket a utilizar de referencia
      * @param bool $observer Variable que determina si el usuario a enviar el documento es el observer o el requester
-     * @return array
+     * @param array|null $user_info Se rellena esta variable con toda la información del usuario
+     * @return bool
      */
-    public static function obtainUserInfo($ticket, $observer) {
+    public static function obtainUserInfo($ticket, $observer, &$user_info) {
         global $DB;    
     
         if(!$observer){
@@ -158,7 +163,7 @@ class PluginDocumensobridgeDocumensoAPI {
         $result_user_info= $DB->doQuery($query_user_info);
         $user_info = $DB->fetchAssoc($result_user_info);
         
-        return $user_info;
+        return true;
     }
 
     /**
