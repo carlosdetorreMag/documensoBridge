@@ -122,7 +122,7 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
                      `id` INT(11) {$default_key_sign} NOT NULL AUTO_INCREMENT,
                      `page_value` TINYINT NOT NULL DEFAULT 1,
                      `posX_value` FLOAT NOT NULL DEFAULT 67.4953,
-                     `posY_value` FLOAT NOT NULL DEFAULT 57.4864,
+                     `posY_value` FLOAT NOT NULL DEFAULT 64.6156,
                      `height_value` FLOAT NOT NULL DEFAULT 6.54827,
                      `width_value` FLOAT NOT NULL DEFAULT 23.7853,
                      `category_name_requester` VARCHAR(250) NOT NULL DEFAULT 'documenso_plugin_requester',
