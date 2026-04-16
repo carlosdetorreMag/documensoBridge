@@ -18,8 +18,12 @@ class PluginDocumensobridgeDocumensoAPI {
         $api_key = $config["documenso_api_key"];
 
         if($api_key === NULL || $api_key ===""){
-            Session::addMessageAfterRedirect(
-                __('Debes de especificar la conexión con documenso en la configuración del plugin.'),
+                Session::addMessageAfterRedirect(
+                    htmlspecialchars(
+                    __('Debes de especificar la conexión con documenso en la configuración del plugin.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 ERROR
             );
@@ -82,7 +86,11 @@ class PluginDocumensobridgeDocumensoAPI {
             self::updatePluginDocumentsTable($plugin_id, $documenso_id, $recipient_id, $user_info["id"]);
 
             Session::addMessageAfterRedirect(
-                __('El archivo se envió a Documenso exitosamente.'),
+                htmlspecialchars(
+                    __('El archivo se envió a Documenso exitosamente.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 INFO
             );
@@ -90,7 +98,11 @@ class PluginDocumensobridgeDocumensoAPI {
 
         else if($httpcode === 401){
             Session::addMessageAfterRedirect(
-                __('La API KEY especificada en la configuración no es válida.'),
+                htmlspecialchars(
+                    __('La API KEY especificada en la configuración no es válida.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 ERROR
             );
@@ -100,7 +112,11 @@ class PluginDocumensobridgeDocumensoAPI {
 
         else{
             Session::addMessageAfterRedirect(
-                __('Hubo un error en la llamada al crear el documento en documenso. ERROR: '. $httpcode .''),
+                htmlspecialchars(
+                    __('Hubo un error en la llamada al crear el documento en documenso. ERROR: '. $httpcode .''),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 ERROR
             );
@@ -131,7 +147,11 @@ class PluginDocumensobridgeDocumensoAPI {
         if ($DB->numrows($result)=== 0) {
             
             Session::addMessageAfterRedirect(
-                __('Añade al menos un observer/requester para enviarle el documento.'),
+                htmlspecialchars(
+                    __('Añade al menos un observer/requester para enviarle el documento.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 ERROR
             );
@@ -140,7 +160,11 @@ class PluginDocumensobridgeDocumensoAPI {
 
         if($DB->numrows($result) > 1){
             Session::addMessageAfterRedirect(
-                __('Añade solo un solicitante/observador por ticket.'),
+                htmlspecialchars(
+                    __('Añade solo un solicitante/observador por ticket.'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
                 false,
                 ERROR
             );
@@ -216,7 +240,11 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada al crear el recipiente. ERROR: '. $httpcode .''),
+            htmlspecialchars(
+                __('Hubo un error en la llamada al crear el recipiente. ERROR: '. $httpcode .''),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             ERROR
         );
@@ -282,7 +310,11 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a crear campos. ERROR: '. $httpcode .''),
+            htmlspecialchars(
+                __('Hubo un error en la llamada a crear campos. ERROR: '. $httpcode .''),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             ERROR
         );
@@ -348,7 +380,11 @@ class PluginDocumensobridgeDocumensoAPI {
         }
 
         Session::addMessageAfterRedirect(
-            __('Hubo un error en la llamada a distribuir el documento. ERROR: '. $httpcode .''),
+            htmlspecialchars(
+                __('Hubo un error en la llamada a distribuir el documento. ERROR: '. $httpcode .''),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             ERROR
         );

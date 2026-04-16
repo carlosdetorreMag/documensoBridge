@@ -237,7 +237,11 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
             } else{
                 // Sale si se ha creado otra categoría con la misma descripción.
                 Session::addMessageAfterRedirect(
-                    __('Hay dos categorías con la misma descripción que la categoría del Solicitante. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                    htmlspecialchars(
+                        __('Hay dos categorías con la misma descripción que la categoría del Solicitante. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ),
                     false,
                     ERROR
                 );
@@ -302,7 +306,11 @@ class PluginDocumensoBridgeConfig extends CommonDBTM
             } else{
                 // Sale si se ha creado otra categoría con la misma descripción.
                 Session::addMessageAfterRedirect(
-                    __('Hay dos categorías con la misma descripción que la categoría del Observador. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                    htmlspecialchars(
+                        __('Hay dos categorías con la misma descripción que la categoría del Observador. Intenta eliminar las categorías con la misma descripción hasta que solo quede una.'),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ),
                     false,
                     ERROR
                 );

@@ -99,7 +99,11 @@ function plugin_documensobridge_install()
     // Se lanza un warning si hay dos categorías con la misma descripción.
     else{
         Session::addMessageAfterRedirect(
-            __('Hay dos categorías con la misma descripción que la categoría del Solicitante. Intenta eliminar las categorías con la misma descripción hasta que solo quede una para evitar futuros errores.'),
+            htmlspecialchars(
+                __('Hay dos categorías con la misma descripción que la categoría del Solicitante. Intenta eliminar las categorías con la misma descripción hasta que solo quede una para evitar futuros errores.'),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             WARNING
         );
@@ -141,7 +145,11 @@ function plugin_documensobridge_install()
     // Se lanza un warning si hay dos categorías con la misma descripción.
     else{
         Session::addMessageAfterRedirect(
-            __('Hay dos categorías con la misma descripción que la categoría del Observador. Intenta eliminar las categorías con la misma descripción hasta que solo quede una para evitar futuros errores.'),
+            htmlspecialchars(
+                __('Hay dos categorías con la misma descripción que la categoría del Observador. Intenta eliminar las categorías con la misma descripción hasta que solo quede una para evitar futuros errores.'),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             WARNING
         );
@@ -244,7 +252,11 @@ function plugin_documensobridge_document_add($document_item) {
     // Verificar que sea PDF
     if ($document->fields['mime'] !== 'application/pdf') {
         Session::addMessageAfterRedirect(
-            __('El archivo adjunto debe de ser de tipo application/pdf para que se envíe a Documenso'),
+            htmlspecialchars(
+                __('El archivo adjunto debe de ser de tipo application/pdf para que se envíe a Documenso'),
+                ENT_QUOTES,
+                'UTF-8'
+            ),
             false,
             ERROR
         );
