@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/inc/config.class.php';
+include_once(__DIR__ . "/inc/documensoapi.class.php");  
 
 /**
  * Plugin install process
@@ -213,64 +214,120 @@ function plugin_documensobridge_document_add($document_item) {
     }
 
     if($config_data["category_name_observer"]=== ''){
-        $category_name_req= "documenso_plugin_observer";
+        $category_name_obs= "documenso_plugin_observer";
     }
 
-    // Verifica si se adjunta un archivo a un ticket
-    if ($document_item->fields['itemtype'] !== 'Ticket') {
+    // Verifica si se adjunta un archivo a un Ticket o a un archivo Certificate
+    if ($document_item->fields['itemtype'] !== 'Ticket' && $document_item->fields['itemtype'] !== 'Certificate') {
         return;
     }
 
-    $ticket_id = $document_item->fields['items_id'];
+    /*************************************************************
+                        FLUJO DE ALBARANES
+    **************************************************************/
+    if($document_item->fields['itemtype'] === 'Ticket'){
+        $ticket_id = $document_item->fields['items_id'];
 
-    $document = new Document();
-    $document->getFromDB($document_item->fields['documents_id']);
+        $document = new Document();
+        $document->getFromDB($document_item->fields['documents_id']);
 
-    // Busca la categoría de requester por el nombre y guarda el id
-    $query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
-    $result = $DB->doQuery($query_category_id);
-    $row = $DB->fetchAssoc($result);
-    $category_id = $row['id'];
-    
-    // Verificar que sea la categoría exacta del plugin buscando por id
-    if($document->fields['documentcategories_id'] !== $category_id){
-        $new_query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_obs)."'";
-        $new_result = $DB->doQuery($new_query_category_id);
-        $row = $DB->fetchAssoc($new_result);
+        // Busca la categoría de requester por el nombre y guarda el id
+        $query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
+        $result = $DB->doQuery($query_category_id);
+        $row = $DB->fetchAssoc($result);
         $category_id = $row['id'];
+        
+        // Verificar que sea la categoría exacta del plugin buscando por id
+        if($document->fields['documentcategories_id'] !== $category_id){
+            $new_query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_obs)."'";
+            $new_result = $DB->doQuery($new_query_category_id);
+            $row = $DB->fetchAssoc($new_result);
+            $category_id = $row['id'];
 
-        // No es un error, es simplemente una subida de documento con una categoría que no es del plugin
+            // No es un error, es simplemente una subida de documento con una categoría que no es del plugin
+            if($document->fields['documentcategories_id'] !== $category_id){
+                return;
+            }
+
+            else{
+                $observer= true;
+            }
+        }
+
+        // Verificar que sea PDF
+        if ($document->fields['mime'] !== 'application/pdf') {
+            Session::addMessageAfterRedirect(
+                htmlspecialchars(
+                    __('El archivo adjunto debe de ser de tipo application/pdf para que se envíe a Documenso'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
+                false,
+                ERROR
+            );
+            return;
+        }
+
+        $file_path = GLPI_DOC_DIR . "/" . $document->fields['filepath'];
+
+        // Cargar ticket
+        $ticket = new Ticket();
+        $ticket->getFromDB($ticket_id);
+
+        PluginDocumensobridgeDocumensoAPI::sendMaterialToDocumenso($ticket, $file_path, $config_data, $observer, $document->fields["id"]);
+    }
+
+    /*************************************************************
+                       FLUJO DE CERTIFICADOS
+    **************************************************************/
+    else{
+        $document = new Document();
+        $document->getFromDB($document_item->fields['documents_id']);
+
+        // Busca la categoría de requester por el nombre y guarda el id
+        $query_category_id = "SELECT id FROM `glpi_documentcategories` WHERE name = '".$DB->escape($category_name_req)."'";
+        $result = $DB->doQuery($query_category_id);
+        $row = $DB->fetchAssoc($result);
+        $category_id = $row['id'];
+        
+        // El flujo de certificados solo se activa con la categoría de requester
         if($document->fields['documentcategories_id'] !== $category_id){
             return;
         }
 
-        else{
-            $observer= true;
+        // Verificar que sea PDF
+        if ($document->fields['mime'] !== 'application/pdf') {
+            Session::addMessageAfterRedirect(
+                htmlspecialchars(
+                    __('El archivo adjunto debe de ser de tipo application/pdf para que se envíe a Documenso'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ),
+                false,
+                ERROR
+            );
+            return;
         }
+
+        $file_path = GLPI_DOC_DIR . "/" . $document->fields['filepath'];
+        $ticket_id= -1;
+
+
+        if (preg_match('/^#(\d+)_/', $document->fields['filename'], $matches)) {
+            $ticket_id= (int) $matches[1];
+        }
+
+        // Documento asignado a certificado con la etiqueta, pero con nomenclatura incorrecta. No se advierte al usuario debido a posibles errores manuales.
+        if($ticket_id === -1){
+            return;
+        }
+
+        // Cargar ticket
+        $ticket = new Ticket();
+        $ticket->getFromDB($ticket_id);
+
+        // Activa el flujo de creación de firmas para los documentos de tipo certificado de material
+        PluginDocumensobridgeDocumensoAPI::sendCertificateToDocumenso($ticket, $file_path, $config_data, $document->fields["id"]);
+
     }
-
-    // Verificar que sea PDF
-    if ($document->fields['mime'] !== 'application/pdf') {
-        Session::addMessageAfterRedirect(
-            htmlspecialchars(
-                __('El archivo adjunto debe de ser de tipo application/pdf para que se envíe a Documenso'),
-                ENT_QUOTES,
-                'UTF-8'
-            ),
-            false,
-            ERROR
-        );
-        return;
-    }
-
-    $file_path = GLPI_DOC_DIR . "/" . $document->fields['filepath'];
-
-    // Cargar ticket
-    $ticket = new Ticket();
-    $ticket->getFromDB($ticket_id);
-
-    // Llamar API
-    include_once(__DIR__ . "/inc/documensoapi.class.php");
-
-    PluginDocumensobridgeDocumensoAPI::sendToDocumenso($ticket, $file_path, $config_data, $observer, $document->fields["id"]);
 }
