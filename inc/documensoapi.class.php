@@ -825,11 +825,6 @@ class PluginDocumensobridgeDocumensoAPI {
                 false,
                 INFO
             );
-
-            Toolbox::logInFile(
-                "documensobridge",
-                "Documento creado correctamente: " . $documenso_id . "\n"
-            );
         }
 
         else if($httpcode === 401){
